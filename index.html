@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คำนวณเงินเดือน</title>
+<style>
+:root{
+  --bg:#f6f6f4; --fg:#1c1c1a; --card:#ffffff; --border:#e3e2de; --muted:#767671;
+  --accent:#3b6fd1; --accent-fg:#ffffff; --danger:#d1453b; --shadow:rgba(20,20,15,0.08);
+  --tab-bg:#eeeeec; --ot-bg:#fff3e0; --ot-fg:#b5620a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17171a; --fg:#eeeeec; --card:#212126; --border:#34343a; --muted:#9a9a9f;
+    --accent:#5b8def; --accent-fg:#0c0c0e; --shadow:rgba(0,0,0,0.35);
+    --tab-bg:#2a2a30; --ot-bg:#3a2d16; --ot-fg:#f0b35c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17171a; --fg:#eeeeec; --card:#212126; --border:#34343a; --muted:#9a9a9f;
+  --accent:#5b8def; --accent-fg:#0c0c0e; --shadow:rgba(0,0,0,0.35);
+  --tab-bg:#2a2a30; --ot-bg:#3a2d16; --ot-fg:#f0b35c;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:"Sarabun","Noto Sans Thai",-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif;padding:16px;padding-bottom:48px;max-width:720px;margin:0 auto}
+h1{font-size:1.3rem;margin:0 0 4px}
+.sub{color:var(--muted);font-size:.85rem;margin:0 0 18px;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px var(--shadow)}
+.card h2{font-size:1rem;margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:110px;flex:1}
+.field label{font-size:.76rem;color:var(--muted)}
+.field input,.field select{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.9rem;font-family:inherit;width:100%}
+button{cursor:pointer;font-family:inherit;font-size:.85rem;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);padding:8px 13px}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+button.danger{color:var(--danger);border-color:var(--danger)}
+button:active{transform:translateY(1px)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.tab{padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:var(--tab-bg);color:var(--fg);font-size:.85rem;cursor:pointer}
+.tab.active{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.tab.add{background:transparent;border-style:dashed}
+.entries-wrap{overflow-x:auto}
+table.entries{width:100%;border-collapse:collapse;font-size:.85rem;min-width:420px}
+table.entries th{text-align:left;font-size:.75rem;color:var(--muted);font-weight:600;padding:6px 6px;border-bottom:1px solid var(--border)}
+table.entries td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+table.entries tr.ot td{background:var(--ot-bg)}
+table.entries input[type=date],table.entries input[type=number]{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:6px 7px;font-size:.82rem;font-family:inherit;width:100%}
+.pay-cell{white-space:nowrap;font-weight:600}
+.ot-badge{font-size:.65rem;color:var(--ot-fg);display:block;font-weight:600}
+.rowbtn{padding:5px 9px;font-size:.78rem}
+.addrow{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.next-preview{font-size:.78rem;color:var(--muted)}
+.period{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.period .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.period .label{font-weight:600;font-size:.9rem}
+.period .total{font-weight:700;font-size:1.05rem;color:var(--accent)}
+.period .meta{font-size:.78rem;color:var(--muted);margin-top:4px}
+.name-edit{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.name-edit input{font-size:1.05rem;font-weight:600;background:transparent;border:none;color:var(--fg);border-bottom:1px dashed var(--border);padding:4px 2px;font-family:inherit;flex:1;min-width:0}
+.empty{color:var(--muted);font-size:.85rem;text-align:center;padding:18px 0}
+@media (max-width:560px){
+  input,select{font-size:16px !important}
+  .rowbtn,.tab,button{min-height:38px}
+  .entries-wrap{overflow-x:visible}
+  table.entries{min-width:0;display:block}
+  table.entries thead{display:none}
+  table.entries tbody{display:block}
+  table.entries tr[data-id]{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:6px 8px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--border)}
+  table.entries tr.ot{background:var(--ot-bg)}
+  table.entries td{display:block;padding:0;border:0}
+  table.entries tr.ot td{background:none}
+  table.entries td.hours-cell{display:flex;align-items:center;gap:4px}
+  table.entries td.hours-cell::after{content:"ชม.";font-size:.78rem;color:var(--muted)}
+  table.entries td:last-child{grid-column:3;grid-row:1}
+  table.entries td.pay-cell{grid-column:1 / -1;grid-row:2;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:.9rem}
+  table.entries td.pay-cell .amt::after{content:" บาท"}
+  .ot-badge{display:inline}
+}
+</style>
+
+<h1>คำนวณเงินเดือนจากชั่วโมงงาน</h1>
+<p class="sub">กด "เพิ่มเดือนถัดไป" เพื่อสร้างวันที่ทั้งรอบเงินเดือนให้ครบในคราวเดียว แล้วกรอกจำนวนชั่วโมงที่ทำแต่ละวัน (ดูจากตารางงานของคุณ) ระบบจะคำนวณค่าจ้างและสรุปยอดตามรอบให้อัตโนมัติ</p>
+<p class="sub" id="syncStatus">กำลังตรวจสอบการซิงก์...</p>
+
+<div class="card">
+  <h2>ตั้งค่าอัตราค่าจ้าง</h2>
+  <div class="row">
+    <div class="field"><label>ค่าจ้างปกติ (บาท/ชม.)</label><input type="number" id="setRate" min="0" step="1"></div>
+    <div class="field"><label>ตั้งแต่กี่ชม./วัน ได้อัตราพิเศษ</label><input type="number" id="setThreshold" min="0" step="0.5"></div>
+    <div class="field"><label>อัตราพิเศษ (บาท/ชม.)</label><input type="number" id="setOtRate" min="0" step="1"></div>
+    <div class="field"><label>ค่าน้ำมัน (บาท/วันที่เข้าเกณฑ์)</label><input type="number" id="setFuel" min="0" step="1"></div>
+    <div class="field"><label>วันตัดรอบเงินเดือน (ทุกวันที่)</label><input type="number" id="setCutoff" min="1" max="31" step="1"></div>
+  </div>
+  <p class="sub" style="margin:10px 0 0">สมมติฐาน: รอบเงินเดือน = วันที่ (ตัดรอบ+1) ของเดือนก่อน ถึงวันตัดรอบของเดือนนี้ — ปรับ "วันตัดรอบ" ด้านบนได้ถ้าไม่ตรง</p>
+</div>
+
+<div class="tabs" id="personTabs"></div>
+
+<div class="card">
+  <div class="name-edit">
+    <input type="text" id="personName" placeholder="ชื่อคน">
+    <button class="danger rowbtn" id="deletePersonBtn">ลบคนนี้</button>
+  </div>
+  <div class="entries-wrap">
+    <table class="entries" id="entriesTable"></table>
+  </div>
+  <div class="addrow">
+    <button class="primary" id="addPeriodBtn">+ เพิ่มเดือนถัดไป (ทั้งรอบ)</button>
+    <button id="addRowBtn">+ เพิ่มวันเดียว</button>
+    <span class="next-preview" id="nextPeriodPreview"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>รอบปัจจุบัน & ประวัติย้อนหลังรายปี</h2>
+  <div id="periodsWrap"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "monthly-wage-tracker-v1";
+const TH_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+function defaultState(){
+  return {
+    settings:{rate:50, threshold:5, otRate:53, fuel:50, cutoffDay:20},
+    activePerson:"p1",
+    people:[
+      {id:"p1", name:"กัปตัน", history:[], entries:[]},
+      {id:"p2", name:"นิว", history:[], entries:[]}
+    ]
+  };
+}
+
+let state = defaultState();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && parsed.settings && Array.isArray(parsed.people)) state = parsed;
+    }
+  }catch(e){}
+  state.people.forEach(p=>{ if(!Array.isArray(p.history)) p.history = []; });
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  if(!dbDocRef) return;
+  clearTimeout(dbSaveTimer);
+  dbSaveTimer = setTimeout(()=>{
+    dbDocRef.set(state).catch(()=>{});
+  }, 500);
+}
+
+function statesEqual(a,b){
+  try{ return JSON.stringify(a)===JSON.stringify(b); }catch(e){ return false; }
+}
+
+function syncSettingsInputs(){
+  document.getElementById("setRate").value = state.settings.rate;
+  document.getElementById("setThreshold").value = state.settings.threshold;
+  document.getElementById("setOtRate").value = state.settings.otRate;
+  document.getElementById("setFuel").value = state.settings.fuel;
+  document.getElementById("setCutoff").value = state.settings.cutoffDay;
+}
+
+let db = null;
+let dbDocRef = null;
+let dbSaveTimer = null;
+const DB_PATH = "state/main";
+
+async function initDb(){
+  const statusEl = document.getElementById("syncStatus");
+  const localOnly = "💾 ข้อมูลบันทึกในเบราว์เซอร์เครื่องนี้ (ไม่ซิงก์ข้ามอุปกรณ์)";
+  try{
+    if(typeof window.claude === "undefined" || !window.claude.use){
+      if(statusEl) statusEl.textContent = localOnly;
+      return;
+    }
+    db = await window.claude.use("db");
+  }catch(e){ db = null; }
+  if(!db){
+    if(statusEl) statusEl.textContent = localOnly;
+    return;
+  }
+  if(statusEl) statusEl.textContent = "🔗 ซิงก์ข้ามอุปกรณ์: เชื่อมต่อแล้ว";
+  dbDocRef = db.doc(DB_PATH);
+  dbDocRef.onSnapshot((snap)=>{
+    if(!snap.exists){ save(); return; }
+    if(snap.metadata.hasPendingWrites) return;
+    const data = snap.data();
+    if(data && data.settings && Array.isArray(data.people) && !statesEqual(data, state)){
+      state = data;
+      state.people.forEach(p=>{ if(!Array.isArray(p.history)) p.history = []; });
+      syncSettingsInputs();
+      renderAll();
+    }
+  }, ()=>{});
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtBaht(n){ return n.toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtThaiDate(d){ return d.getDate()+" "+TH_MONTHS[d.getMonth()]+" "+(d.getFullYear()+543); }
+
+function activePerson(){ return state.people.find(p=>p.id===state.activePerson) || state.people[0]; }
+
+function toDateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+function nextPeriodForPerson(p){
+  let refEnd = null;
+  if(p.entries.length){
+    const latest = p.entries.reduce((a,b)=> a.date>b.date ? a : b);
+    refEnd = periodInfoForDate(latest.date).end;
+  } else if(p.history.length){
+    const latestH = [...p.history].sort((a,b)=>a.key.localeCompare(b.key)).pop();
+    refEnd = new Date(latestH.endISO+"T00:00:00");
+  }
+  let base;
+  if(refEnd){ base = new Date(refEnd); base.setDate(base.getDate()+1); }
+  else { base = new Date(); }
+  return periodInfoForDate(toDateStr(base));
+}
+
+function archiveCurrentEntries(p){
+  if(!p.entries.length) return;
+  const groups = {};
+  p.entries.forEach(e=>{
+    const info = periodInfoForDate(e.date);
+    if(!groups[info.key]) groups[info.key] = {info, hours:0, pay:0};
+    groups[info.key].hours += Number(e.hours)||0;
+    groups[info.key].pay += computeDayPay(Number(e.hours)||0).pay;
+  });
+  Object.keys(groups).forEach(k=>{
+    const g = groups[k];
+    const rec = {key:k, startISO:toDateStr(g.info.start), endISO:toDateStr(g.info.end), hours:g.hours, pay:g.pay};
+    const idx = p.history.findIndex(h=>h.key===k);
+    if(idx>=0) p.history[idx] = rec; else p.history.push(rec);
+  });
+  p.entries = [];
+}
+
+function addPeriodEntries(p, info){
+  const existing = new Set(p.entries.map(e=>e.date));
+  const cur = new Date(info.start);
+  let added = 0;
+  while(cur <= info.end){
+    const ds = toDateStr(cur);
+    if(!existing.has(ds)){
+      p.entries.push({id:"e"+Date.now()+Math.random().toString(36).slice(2,6)+added, date: ds, hours: 0});
+      added++;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+}
+
+function computeDayPay(hours){
+  const s = state.settings;
+  const isOt = hours >= s.threshold;
+  const rate = isOt ? s.otRate : s.rate;
+  const fuel = isOt ? s.fuel : 0;
+  return {isOt, rate, fuel, pay: hours*rate + fuel};
+}
+
+function periodInfoForDate(dateStr){
+  const cutoff = state.settings.cutoffDay || 20;
+  const dt = new Date(dateStr+"T00:00:00");
+  const day = dt.getDate();
+  let end;
+  if(day <= cutoff){ end = new Date(dt.getFullYear(), dt.getMonth(), cutoff); }
+  else { end = new Date(dt.getFullYear(), dt.getMonth()+1, cutoff); }
+  const start = new Date(end.getFullYear(), end.getMonth()-1, cutoff+1);
+  const key = end.getFullYear()+"-"+String(end.getMonth()+1).padStart(2,"0");
+  return {key, start, end};
+}
+
+function renderTabs(){
+  const wrap = document.getElementById("personTabs");
+  wrap.innerHTML = "";
+  state.people.forEach(p=>{
+    const b = document.createElement("button");
+    b.className = "tab" + (p.id===state.activePerson ? " active" : "");
+    b.textContent = p.name || "ไม่มีชื่อ";
+    b.addEventListener("click", ()=>{ state.activePerson = p.id; save(); renderAll(); });
+    wrap.appendChild(b);
+  });
+  const addBtn = document.createElement("button");
+  addBtn.className = "tab add";
+  addBtn.textContent = "+ เพิ่มคน";
+  addBtn.addEventListener("click", ()=>{
+    const name = prompt("ชื่อคนใหม่:","");
+    if(name===null) return;
+    const id = "p"+Date.now();
+    state.people.push({id, name: name.trim()||"ไม่มีชื่อ", entries:[], history:[]});
+    state.activePerson = id;
+    save(); renderAll();
+  });
+  wrap.appendChild(addBtn);
+}
+
+function renderPersonCard(){
+  const p = activePerson();
+  const nameInput = document.getElementById("personName");
+  nameInput.value = p.name;
+  document.getElementById("deletePersonBtn").disabled = state.people.length<=1;
+
+  const entries = [...p.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  const tbl = document.getElementById("entriesTable");
+  let html = "<thead><tr><th>วันที่</th><th>ชั่วโมง</th><th>ค่าจ้าง (บาท)</th><th></th></tr></thead><tbody>";
+  if(entries.length===0){
+    html += "<tr><td colspan='4' class='empty'>ยังไม่มีข้อมูล กด \"+ เพิ่มเดือนถัดไป\" เพื่อเริ่ม</td></tr>";
+  }
+  entries.forEach(e=>{
+    const r = computeDayPay(Number(e.hours)||0);
+    html += "<tr class='"+(r.isOt?"ot":"")+"' data-id='"+e.id+"'>"
+      + "<td><input type='date' class='f-date' value='"+e.date+"'></td>"
+      + "<td class='hours-cell'><input type='number' class='f-hours' min='0' step='0.5' inputmode='decimal' value='"+e.hours+"'></td>"
+      + "<td class='pay-cell'><span class='amt'>"+fmtBaht(r.pay)+"</span>"+(r.isOt?"<span class='ot-badge'>อัตราพิเศษ+น้ำมัน</span>":"")+"</td>"
+      + "<td><button class='danger rowbtn f-del'>ลบ</button></td>"
+      + "</tr>";
+  });
+  html += "</tbody>";
+  tbl.innerHTML = html;
+
+  const nextInfo = nextPeriodForPerson(p);
+  document.getElementById("nextPeriodPreview").textContent = "รอบถัดไปที่จะเพิ่ม: "+fmtThaiDate(nextInfo.start)+" – "+fmtThaiDate(nextInfo.end);
+
+  tbl.querySelectorAll("tr[data-id]").forEach(tr=>{
+    const id = tr.dataset.id;
+    tr.querySelector(".f-date").addEventListener("change", (e)=>{
+      const entry = p.entries.find(x=>x.id===id);
+      entry.date = e.target.value;
+      save(); renderAll();
+    });
+    tr.querySelector(".f-hours").addEventListener("input", (e)=>{
+      const entry = p.entries.find(x=>x.id===id);
+      entry.hours = Number(e.target.value)||0;
+      save(); renderPersonCard(); renderPeriods();
+    });
+    tr.querySelector(".f-del").addEventListener("click", ()=>{
+      p.entries = p.entries.filter(x=>x.id!==id);
+      save(); renderAll();
+    });
+  });
+}
+
+function renderPeriods(){
+  const p = activePerson();
+  const wrap = document.getElementById("periodsWrap");
+  let html = "";
+
+  if(p.entries.length){
+    const info = periodInfoForDate(p.entries[0].date);
+    let hours=0, pay=0;
+    p.entries.forEach(e=>{ hours += Number(e.hours)||0; pay += computeDayPay(Number(e.hours)||0).pay; });
+    html += "<div class='period'><div class='top'>"
+      + "<div class='label'>รอบปัจจุบัน: "+fmtThaiDate(info.start)+" – "+fmtThaiDate(info.end)+"</div>"
+      + "<div class='total'>"+fmtBaht(pay)+" บาท</div>"
+      + "</div><div class='meta'>รวม "+hours.toFixed(2)+" ชั่วโมง · กำลังกรอกอยู่ (ยังไม่ปิดรอบ)</div></div>";
+  }
+
+  if(p.history.length){
+    const byYear = {};
+    p.history.forEach(h=>{
+      const y = Number(h.endISO.slice(0,4)) + 543;
+      if(!byYear[y]) byYear[y] = [];
+      byYear[y].push(h);
+    });
+    Object.keys(byYear).sort().reverse().forEach(y=>{
+      const items = byYear[y].sort((a,b)=>b.key.localeCompare(a.key));
+      const yearTotal = items.reduce((s,h)=>s+h.pay,0);
+      html += "<h3 style='margin:18px 0 8px;font-size:.88rem;display:flex;justify-content:space-between'><span>ปี "+y+"</span><span style='color:var(--accent)'>รวม "+fmtBaht(yearTotal)+" บาท</span></h3>";
+      items.forEach(h=>{
+        const s = new Date(h.startISO+"T00:00:00"), e = new Date(h.endISO+"T00:00:00");
+        html += "<div class='period'><div class='top'>"
+          + "<div class='label'>"+fmtThaiDate(s)+" – "+fmtThaiDate(e)+"</div>"
+          + "<div class='total'>"+fmtBaht(h.pay)+" บาท</div>"
+          + "</div><div class='meta'>รวม "+h.hours.toFixed(2)+" ชั่วโมง</div></div>";
+      });
+    });
+  }
+
+  if(!html) html = "<div class='empty'>ยังไม่มีข้อมูลให้สรุป</div>";
+  wrap.innerHTML = html;
+}
+
+document.getElementById("personName").addEventListener("input", (e)=>{
+  activePerson().name = e.target.value;
+  save(); renderTabs();
+});
+document.getElementById("deletePersonBtn").addEventListener("click", ()=>{
+  if(state.people.length<=1) return;
+  if(!confirm("ลบข้อมูลของ \""+activePerson().name+"\" ทั้งหมด?")) return;
+  state.people = state.people.filter(p=>p.id!==state.activePerson);
+  state.activePerson = state.people[0].id;
+  save(); renderAll();
+});
+document.getElementById("addRowBtn").addEventListener("click", ()=>{
+  const p = activePerson();
+  const sorted = [...p.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  let nextDate;
+  if(sorted.length){
+    const last = new Date(sorted[sorted.length-1].date+"T00:00:00");
+    last.setDate(last.getDate()+1);
+    nextDate = toDateStr(last);
+  } else {
+    nextDate = toDateStr(new Date());
+  }
+  p.entries.push({id:"e"+Date.now()+Math.random().toString(36).slice(2,6), date: nextDate, hours: 0});
+  save(); renderAll();
+});
+document.getElementById("addPeriodBtn").addEventListener("click", ()=>{
+  const p = activePerson();
+  const info = nextPeriodForPerson(p);
+  if(p.entries.length && !confirm("ปิดรอบปัจจุบันและเก็บยอดลงประวัติ แล้วเริ่มรอบใหม่ ("+fmtThaiDate(info.start)+" – "+fmtThaiDate(info.end)+")?")) return;
+  archiveCurrentEntries(p);
+  addPeriodEntries(p, info);
+  save(); renderAll();
+});
+
+["setRate","setThreshold","setOtRate","setFuel","setCutoff"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", ()=>{
+    state.settings.rate = Number(document.getElementById("setRate").value)||0;
+    state.settings.threshold = Number(document.getElementById("setThreshold").value)||0;
+    state.settings.otRate = Number(document.getElementById("setOtRate").value)||0;
+    state.settings.fuel = Number(document.getElementById("setFuel").value)||0;
+    state.settings.cutoffDay = Math.min(31,Math.max(1,Number(document.getElementById("setCutoff").value)||20));
+    save(); renderAll();
+  });
+});
+
+function renderAll(){ renderTabs(); renderPersonCard(); renderPeriods(); }
+
+function init(){
+  load();
+  syncSettingsInputs();
+  renderAll();
+  initDb();
+}
+init();
+</script>
